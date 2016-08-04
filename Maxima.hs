@@ -1,3 +1,4 @@
+-- * Imports , pragmas, datatypes
 {-# LANGUAGE LambdaCase #-}
 
 module Maxima ( MaximaServerParams
@@ -24,6 +25,9 @@ data MaximaServerParams = MaximaServerParams
   , mPid :: ProcessHandle 
   }
 
+-- * Functions
+-- ** Server communication & setup
+
 startMaximaServer port = withSocketsDo $ do
     conn <- listenServer port
     (_,_,_,pid)   <-  runInteractiveProcess "maxima"
@@ -31,11 +35,31 @@ startMaximaServer port = withSocketsDo $ do
                                             Nothing Nothing
     (sock, _)     <-  accept conn
     socketHandle  <-  socketToHandle sock ReadWriteMode
-    hSetBuffering     socketHandle NoBuffering
-    _             <-  hTakeWhileNotFound "(%i" socketHandle
-                   >> hTakeWhileNotFound ")"   socketHandle
+    hSetBuffering     socketHandle        NoBuffering
+    _             <-  hTakeWhileNotFound "(%i" socketHandle >>
+                      hTakeWhileNotFound ")"   socketHandle
     return $ MaximaServerParams conn sock socketHandle pid
  
+listenServer port = do
+    sock <- socket AF_INET Stream 0
+    setSocketOption sock  ReuseAddr 1
+    bindSocket      sock (SockAddrInet port iNADDR_ANY)
+    listen sock 1
+    return sock
+
+hTakeWhileNotFound str hdl = reverse <$> findStr str hdl [0] []
+ where
+   findStr st hl indeces acc = do 
+     c <- hGetChar hl
+     let newIndeces = [ i+1 | i <- indeces, i < length st, st!!i == c]
+     if length st `elem` newIndeces
+       then return (c : acc)
+       else findStr str hdl (0 : newIndeces) (c : acc)
+
+
+
+-- ** Maxima ask/response
+
 askMaximaRaw (MaximaServerParams _ _ hdl _) question = do
     hPutStrLn hdl question
     result <- hTakeWhileNotFound "(%i" hdl
@@ -57,18 +81,13 @@ askMaxima maxima question =
          filter (not . null) . map (drop 2) . filter (not . null) . map (dropWhile (/=')')) $
          lines result
     
+-- ** Maxima process management
+
 runMaxima port f = bracket (startMaximaServer port)
                            (\srv -> do terminateProcess2 (mPid srv)
                                        _  <- waitForProcess (mPid srv)
                                        sClose (mConnection srv))
                            (\x -> initMaximaVariables x >> f x)
-
-listenServer port = do
-    sock <- socket AF_INET Stream 0
-    setSocketOption sock ReuseAddr 1
-    bindSocket sock (SockAddrInet port iNADDR_ANY)
-    listen sock 1
-    return sock
 
 terminateProcess2 :: ProcessHandle -> IO ()
 terminateProcess2 (ProcessHandle pmvar _) = 
@@ -76,11 +95,3 @@ terminateProcess2 (ProcessHandle pmvar _) =
         OpenHandle pid -> signalProcess 15 pid -- pid is a POSIX pid
         _              -> return () -- hlint suggested to remove otherwise here : Used otherwise as a pattern
     
-hTakeWhileNotFound str hdl = reverse <$> findStr str hdl [0] []
- where
-   findStr st hl indeces acc = do 
-     c <- hGetChar hl
-     let newIndeces = [ i+1 | i <- indeces, i < length st, st!!i == c]
-     if length st `elem` newIndeces
-       then return (c : acc)
-       else findStr str hdl (0 : newIndeces) (c : acc)
