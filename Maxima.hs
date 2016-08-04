@@ -17,7 +17,7 @@ import System.Process.Internals
 
 import Control.Exception
 import Control.Concurrent
-import Control.Applicative
+-- import Control.Applicative
 
 data MaximaServerParams = MaximaServerParams 
   { mConnection :: Socket
@@ -29,36 +29,36 @@ data MaximaServerParams = MaximaServerParams
 startMaximaServer port = withSocketsDo $ do
     conn <- listenServer port
     (_, _, _, pid) <- runInteractiveProcess "maxima"
-                                            (["-r", ":lisp (setup-client "++show port++")"]) 
+                                            ["-r", ":lisp (setup-client "++show port++")"] 
                                             Nothing Nothing
     (sock, _) <- accept conn
     socketHandle <- socketToHandle sock ReadWriteMode
     hSetBuffering socketHandle NoBuffering
-    hTakeWhileNotFound "(%i" socketHandle >> hTakeWhileNotFound ")" socketHandle
-    return$ MaximaServerParams conn sock socketHandle pid
+    _ <- hTakeWhileNotFound "(%i" socketHandle >> hTakeWhileNotFound ")" socketHandle
+    return $ MaximaServerParams conn sock socketHandle pid
  
 askMaximaRaw (MaximaServerParams _ _ hdl _) question = do
     hPutStrLn hdl question
     result <- hTakeWhileNotFound "(%i" hdl
-    hTakeWhileNotFound ")" hdl
+    _      <- hTakeWhileNotFound ")" hdl
     return$ take (length result - 3) result
 
 initMaximaVariables maxima = do
-    askMaximaRaw maxima "display2d: false;"
+    _  <- askMaximaRaw maxima "display2d: false;"
     askMaximaRaw maxima "linel: 10000;"
 
-askMaxima maxima question = do
+askMaxima maxima question = 
   if null $ dropWhile isSpace question 
      then return []
      else do
        let q = dropWhileEnd isSpace question
-           q2 = if elem (last q) ['$',';'] then q else q ++ ";"
+           q2 = if last q `elem` ['$',';'] then q else q ++ ";"
        result <- askMaximaRaw maxima q2
        return$ filter (not.null) . map (drop 2) . filter (not.null) . map (dropWhile (/=')'))$ lines result
     
 runMaxima port f = bracket (startMaximaServer port)
                            (\srv -> do terminateProcess2 (mPid srv)
-                                       waitForProcess (mPid srv)
+                                       _  <- waitForProcess (mPid srv)
                                        sClose (mConnection srv))
                            (\x -> initMaximaVariables x >> f x)
 
@@ -74,15 +74,14 @@ terminateProcess2 ph = do
     let (ProcessHandle pmvar _) = ph
     ph_ <- readMVar pmvar
     case ph_ of
-        OpenHandle pid -> do  -- pid is a POSIX pid
-            signalProcess 15 pid
-        otherwise -> return ()
+        OpenHandle pid -> signalProcess 15 pid -- pid is a POSIX pid
+        _              -> return ()  -- hlint suggested to remove otherwise here : Used otherwise as a pattern
     
-hTakeWhileNotFound str hdl = fmap reverse$ findStr str hdl [0] []
+hTakeWhileNotFound str hdl = fmap reverse $ findStr str hdl [0] []
  where
-   findStr str hdl indeces acc = do 
-     c <- hGetChar hdl
-     let newIndeces = [ i+1 | i <- indeces, i < length str, str!!i == c]
-     if length str `elem` newIndeces
+   findStr st hl indeces acc = do 
+     c <- hGetChar hl
+     let newIndeces = [ i+1 | i <- indeces, i < length st, st!!i == c]
+     if length st `elem` newIndeces
        then return (c : acc)
        else findStr str hdl (0 : newIndeces) (c : acc)
