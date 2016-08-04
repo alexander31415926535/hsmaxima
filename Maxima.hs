@@ -1,4 +1,6 @@
 -- * Imports , pragmas, datatypes
+-- To enable org functionality start orgstruct-mode , then use TAB , S-TAB on headlines.
+
 {-# LANGUAGE LambdaCase #-}
 
 module Maxima ( MaximaServerParams
@@ -27,9 +29,9 @@ data MaximaServerParams = MaximaServerParams
 
 -- * Functions
 -- ** Server communication & setup
-
+-- *** startMaximaServer
 startMaximaServer port = withSocketsDo $ do
-    conn <- listenServer port
+    conn          <-  listenServer port
     (_,_,_,pid)   <-  runInteractiveProcess "maxima"
                                             ["-r", ":lisp (setup-client "++show port++")"] 
                                             Nothing Nothing
@@ -39,7 +41,8 @@ startMaximaServer port = withSocketsDo $ do
     _             <-  hTakeWhileNotFound "(%i" socketHandle >>
                       hTakeWhileNotFound ")"   socketHandle
     return $ MaximaServerParams conn sock socketHandle pid
- 
+
+-- *** listenServer 
 listenServer port = do
     sock <- socket AF_INET Stream 0
     setSocketOption sock  ReuseAddr 1
@@ -47,14 +50,15 @@ listenServer port = do
     listen sock 1
     return sock
 
+-- *** hTakeWhileNotFound
 hTakeWhileNotFound str hdl = reverse <$> findStr str hdl [0] []
- where
-   findStr st hl indeces acc = do 
-     c <- hGetChar hl
-     let newIndeces = [ i+1 | i <- indeces, i < length st, st!!i == c]
-     if length st `elem` newIndeces
-       then return (c : acc)
-       else findStr str hdl (0 : newIndeces) (c : acc)
+
+  where findStr st hl indices acc = do 
+        c <- hGetChar hl
+        let newIndeces = [ i+1 | i <- indices, i < length st, st!!i == c]
+        if length st `elem` newIndeces
+          then return (c : acc)
+          else findStr str hdl (0 : newIndeces) (c : acc)
 
 
 
