@@ -10,12 +10,10 @@ module Maxima ( MaximaServerParams
 import Data.List
 import Data.Char
 import Network.Socket
-
 import System.IO
 import System.Process
 import System.Posix.Signals
 import System.Process.Internals
-
 import Control.Exception
 import Control.Concurrent
 
@@ -28,13 +26,14 @@ data MaximaServerParams = MaximaServerParams
 
 startMaximaServer port = withSocketsDo $ do
     conn <- listenServer port
-    (_, _, _, pid) <- runInteractiveProcess "maxima"
+    (_,_,_,pid)   <-  runInteractiveProcess "maxima"
                                             ["-r", ":lisp (setup-client "++show port++")"] 
                                             Nothing Nothing
-    (sock, _) <- accept conn
-    socketHandle <- socketToHandle sock ReadWriteMode
-    hSetBuffering socketHandle NoBuffering
-    _ <- hTakeWhileNotFound "(%i" socketHandle >> hTakeWhileNotFound ")" socketHandle
+    (sock, _)     <-  accept conn
+    socketHandle  <-  socketToHandle sock ReadWriteMode
+    hSetBuffering     socketHandle NoBuffering
+    _             <-  hTakeWhileNotFound "(%i" socketHandle
+                   >> hTakeWhileNotFound ")"   socketHandle
     return $ MaximaServerParams conn sock socketHandle pid
  
 askMaximaRaw (MaximaServerParams _ _ hdl _) question = do
@@ -45,7 +44,7 @@ askMaximaRaw (MaximaServerParams _ _ hdl _) question = do
 
 initMaximaVariables maxima = do
     _  <- askMaximaRaw maxima "display2d: false;"
-    askMaximaRaw maxima "linel: 10000;"
+    askMaximaRaw       maxima "linel: 10000;"
 
 askMaxima maxima question = 
   if null $ dropWhile isSpace question 
@@ -55,7 +54,7 @@ askMaxima maxima question =
            q2 = if last q `elem` ['$',';'] then q else q ++ ";"
        result <- askMaximaRaw maxima q2
        return $
-         filter (not . null) . map (drop 2) . filter (not.null) . map (dropWhile (/=')')) $
+         filter (not . null) . map (drop 2) . filter (not . null) . map (dropWhile (/=')')) $
          lines result
     
 runMaxima port f = bracket (startMaximaServer port)
