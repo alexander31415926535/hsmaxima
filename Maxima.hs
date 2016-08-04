@@ -1,5 +1,5 @@
 -- * Imports , pragmas, datatypes
--- To enable org functionality start orgstruct-mode , then use TAB , S-TAB on headlines.
+--   Emacs: To enable org functionality start orgstruct-mode , then use TAB , S-TAB on headlines.
 
 {-# LANGUAGE LambdaCase #-}
 
