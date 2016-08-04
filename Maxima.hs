@@ -1,3 +1,4 @@
+
 module Maxima ( MaximaServerParams
               , runMaxima
               , askMaxima
@@ -70,7 +71,7 @@ listenServer port = do
 
 terminateProcess2 :: ProcessHandle -> IO ()
 terminateProcess2 ph = do
-    let (ProcessHandle pmvar) = ph
+    let (ProcessHandle pmvar _) = ph
     ph_ <- readMVar pmvar
     case ph_ of
         OpenHandle pid -> do  -- pid is a POSIX pid
