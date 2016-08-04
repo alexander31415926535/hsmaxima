@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 
 module Maxima ( MaximaServerParams
               , runMaxima
@@ -41,7 +42,7 @@ askMaximaRaw (MaximaServerParams _ _ hdl _) question = do
     hPutStrLn hdl question
     result <- hTakeWhileNotFound "(%i" hdl
     _      <- hTakeWhileNotFound ")" hdl
-    return$ take (length result - 3) result
+    return $ take (length result - 3) result
 
 initMaximaVariables maxima = do
     _  <- askMaximaRaw maxima "display2d: false;"
@@ -54,7 +55,9 @@ askMaxima maxima question =
        let q = dropWhileEnd isSpace question
            q2 = if last q `elem` ['$',';'] then q else q ++ ";"
        result <- askMaximaRaw maxima q2
-       return$ filter (not.null) . map (drop 2) . filter (not.null) . map (dropWhile (/=')'))$ lines result
+       return $
+         filter (not . null) . map (drop 2) . filter (not.null) . map (dropWhile (/=')')) $
+         lines result
     
 runMaxima port f = bracket (startMaximaServer port)
                            (\srv -> do terminateProcess2 (mPid srv)
@@ -70,12 +73,10 @@ listenServer port = do
     return sock
 
 terminateProcess2 :: ProcessHandle -> IO ()
-terminateProcess2 ph = do
-    let (ProcessHandle pmvar _) = ph
-    ph_ <- readMVar pmvar
-    case ph_ of
+terminateProcess2 (ProcessHandle pmvar _) = 
+    readMVar pmvar >>= \case 
         OpenHandle pid -> signalProcess 15 pid -- pid is a POSIX pid
-        _              -> return ()  -- hlint suggested to remove otherwise here : Used otherwise as a pattern
+        _              -> return () -- hlint suggested to remove otherwise here : Used otherwise as a pattern
     
 hTakeWhileNotFound str hdl = fmap reverse $ findStr str hdl [0] []
  where
