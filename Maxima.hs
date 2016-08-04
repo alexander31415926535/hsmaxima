@@ -18,7 +18,6 @@ import System.Process.Internals
 
 import Control.Exception
 import Control.Concurrent
--- import Control.Applicative
 
 data MaximaServerParams = MaximaServerParams 
   { mConnection :: Socket
@@ -78,7 +77,7 @@ terminateProcess2 (ProcessHandle pmvar _) =
         OpenHandle pid -> signalProcess 15 pid -- pid is a POSIX pid
         _              -> return () -- hlint suggested to remove otherwise here : Used otherwise as a pattern
     
-hTakeWhileNotFound str hdl = fmap reverse $ findStr str hdl [0] []
+hTakeWhileNotFound str hdl = reverse <$> findStr str hdl [0] []
  where
    findStr st hl indeces acc = do 
      c <- hGetChar hl
