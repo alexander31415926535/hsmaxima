@@ -1,8 +1,7 @@
 {-# LANGUAGE MultiWayIf #-}
 
 import Data.Attoparsec.ByteString.Char8 
-import Control.Applicative ((<|>)) 
-import Data.ByteString.Char8 (pack,unpack) 
+import Data.ByteString.Char8 (pack) 
 import Maxima
 import Data.List.Extra hiding (any)
 
@@ -16,18 +15,18 @@ maximaPrompt srv = do
         do putStrLn "Type maxima command or :q to quit."
            maximaPrompt srv
       | otherwise -> do answer <- askMaxima srv question
-                        mapM_ putStrLn (map tounicode answer)
+                        mapM_ (putStrLn . tounicode) answer
                         maximaPrompt srv
                
 
 tounicode :: String -> String
-tounicode string = foldl1 (.) (zipWith (\x y -> replace x y) ("*":terms) ("·":helper terms)) string
-  where terms = case parseOnly allpowers (pack string) of
+tounicode str = foldl1 (.) (zipWith replace  ("*":terms) ("·":helper terms)) str
+  where terms = case parseOnly allpowers (pack str) of
                  Left _     -> []
                  Right pstr -> pstr
 
-        helper xp = map (foldl1 (.) (zipWith (\x y -> replace x y) ["^","1","2","3","4","5","6","7","8","9","0"]
-                                                                   ["","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹","⁰"])) xp
+        helper xp = map (foldl1 (.) (zipWith  replace ["^","1","2","3","4","5","6","7","8","9","0"]
+                                                      ["","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹","⁰"])) xp
 
 
 (<^>) = flip (<?>)              -- more convenient help combinator
