@@ -1,7 +1,10 @@
 {-# LANGUAGE MultiWayIf #-}
 
+import Data.Attoparsec.ByteString.Char8 
+import Control.Applicative ((<|>)) 
+import Data.ByteString.Char8 (pack,unpack) 
 import Maxima
-import Data.List.Extra
+import Data.List.Extra hiding (any)
 
   
 maximaPrompt srv = do
@@ -18,7 +21,18 @@ maximaPrompt srv = do
                
 
 tounicode :: String -> String
-tounicode x = foldl1 (.) (zipWith (\x y -> replace x y) ["^2","^3","^4","^5","^6","^7","^8","^9"]
-                                            ["²","³","⁴","⁵","⁶","⁷","⁸","⁹"]) x
-   
+tounicode string = foldl1 (.) (zipWith (\x y -> replace x y) ("*":terms)
+                                                              ["·","²","³","⁴","⁵","⁶","⁷","⁸","⁹"]) string
+  where terms = case parseOnly allpowers (pack string) of
+          Left _     -> []
+          Right pstr -> pstr
+
+(<^>) = flip (<?>)              -- more convenient help combinator
+
+powerp :: Parser String
+powerp = "Powerp"  <^> ((:) <$> char '^' <*> (many1 digit))
+
+allpowers :: Parser [String]
+allpowers = "allpowers"  <^> many' (skipMany (satisfy (notInClass "^1234567890")) *> powerp) 
+         
 main = runMaxima 4424 maximaPrompt
