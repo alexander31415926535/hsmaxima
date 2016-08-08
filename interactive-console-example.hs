@@ -21,11 +21,14 @@ maximaPrompt srv = do
                
 
 tounicode :: String -> String
-tounicode string = foldl1 (.) (zipWith (\x y -> replace x y) ("*":terms)
-                                                              ["·","²","³","⁴","⁵","⁶","⁷","⁸","⁹"]) string
+tounicode string = foldl1 (.) (zipWith (\x y -> replace x y) ("*":terms) ("·":helper terms)) string
   where terms = case parseOnly allpowers (pack string) of
-          Left _     -> []
-          Right pstr -> pstr
+                 Left _     -> []
+                 Right pstr -> pstr
+
+        helper xp = map (foldl1 (.) (zipWith (\x y -> replace x y) ["^","1","2","3","4","5","6","7","8","9","0"]
+                                                                   ["","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹","⁰"])) xp
+
 
 (<^>) = flip (<?>)              -- more convenient help combinator
 
@@ -33,6 +36,6 @@ powerp :: Parser String
 powerp = "Powerp"  <^> ((:) <$> char '^' <*> (many1 digit))
 
 allpowers :: Parser [String]
-allpowers = "allpowers"  <^> many' (skipMany (satisfy (notInClass "^1234567890")) *> powerp) 
+allpowers = "allpowers"  <^> many' (takeTill (\x -> x == '^') *> powerp)
          
 main = runMaxima 4424 maximaPrompt
