@@ -4,7 +4,8 @@ import Data.Attoparsec.ByteString.Char8
 import Data.ByteString.Char8 (pack) 
 import Maxima
 import Data.List.Extra hiding (any)
-
+-- TODO: Add haskeline support, to have history etc.
+-- TODO: Add more functionality
   
 maximaPrompt srv = do
     putStr "> "
@@ -28,13 +29,12 @@ tounicode str = foldl1 (.) (zipWith replace  ("*":terms) ("·":helper terms)) st
         helper xp = map (foldl1 (.) (zipWith  replace ["^","1","2","3","4","5","6","7","8","9","0"]
                                                       ["","¹","²","³","⁴","⁵","⁶","⁷","⁸","⁹","⁰"])) xp
 
-
 (<^>) = flip (<?>)              -- more convenient help combinator
 
 powerp :: Parser String
-powerp = "Powerp"  <^> ((:) <$> char '^' <*> (many1 digit))
+powerp = "Powerp"  <^> ((:) <$> char '^' <*> many1 digit)
 
 allpowers :: Parser [String]
-allpowers = "allpowers"  <^> many' (takeTill (\x -> x == '^') *> powerp)
+allpowers = "allpowers"  <^> many' (takeTill (== '^') *> powerp)
          
 main = runMaxima 4424 maximaPrompt
